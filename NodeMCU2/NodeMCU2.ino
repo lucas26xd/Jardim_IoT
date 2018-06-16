@@ -58,17 +58,25 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
   DADOS dados;
   topico.toCharArray(dados.topico, sizeof(dados.topico));
   if (topico.equals("solo")) {
-    dados.valor = (uint16_t) analogRead(A0)/730;
+    dados.valor = (uint16_t) analogRead(A0)*100/750;
   } else if (topico. equals("umidade")) {
+    if (isnan(dht.readHumidity())) {
+      Serial.println("Falha na leitura da umidade do sensor!");
+      return;
+    }
     dados.valor = (uint16_t) dht.readHumidity();
   } else if (topico. equals("temperatura")) {
+    if (isnan(dht.readTemperature())) {
+      Serial.println("Falha na leitura da temperatura do sensor!");
+      return;
+    }
     dados.valor = (uint16_t) dht.readTemperature();
   } else if (topico. equals("heat_index")) {
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t)) {
-      Serial.println("Falha ao ler o sensor!");
-      return;
+        Serial.println("Falha ao ler o sensor!");
+        return;
     }
     dados.valor = (uint16_t) dht.computeHeatIndex(t, h, false);
   } else {
@@ -76,11 +84,6 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
     dados.valor = 0;
     topico = "Nenhum";
     topico.toCharArray(dados.topico, sizeof(dados.topico));
-  }
-
-  if (isnan(dados.valor)) {
-    Serial.println("Falha na leitura do sensor!");
-    return;
   }
 
   Serial.print("Topico: ");
@@ -127,6 +130,11 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
   }
 }
 
+void desligaMotor(){
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(MOTOR, LOW);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -155,10 +163,10 @@ void loop() {
     Envia("heat_index");
     delay(2);
     Envia("solo");
+    delay(2);
   }
   if(analogRead(A0) > 480){//Desligamento para não enxarcar
-    digitalWrite(LED_BUILTIN, HIGH);
-    digitalWrite(MOTOR, LOW);
+    desligaMotor();
   }
 }
 

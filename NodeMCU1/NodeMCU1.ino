@@ -85,6 +85,7 @@ void Envia(uint16_t valor) { //Envia ao dispositivo final o sinal de ligar ou de
   uint8_t len = sizeof(data);
 
   esp_now_send(MACslave, data, len); //envia dados para nodeMCU 2
+  //delay(3);
 }
 
 void Enviou(uint8_t* mac, uint8_t status) { //Callback que verifica se foi recebido ACK
@@ -227,6 +228,7 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   if (topico.equals("motor")) { //Envia para o nodeMCU 2 a mensagem de ligar ou desligar o motor
     reEnvioMsg = msg.toInt();
     Envia(msg.toInt());
+    delay(2);
   }
   Serial.println("-----------------------------");
 }
@@ -297,7 +299,6 @@ void loop() {
     if(qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0){
       EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor);
       umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = 0;
-      Serial.println("Enviou");
     }
   }
 }
