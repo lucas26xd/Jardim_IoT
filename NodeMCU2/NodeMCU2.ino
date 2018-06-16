@@ -15,7 +15,7 @@ struct DADOS {
    0xDC, 0x4F, 0x22, 0x18, 0x20, 0x6E //Ângela
 */
 
-uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x22, 0x1D}; //Ângela
+uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x22, 0x1D}; //Lucas
 
 #define ROLE 2
 #define CHANNEL 3
@@ -58,7 +58,7 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
   DADOS dados;
   topico.toCharArray(dados.topico, sizeof(dados.topico));
   if (topico.equals("solo")) {
-    dados.valor = analogRead(A0);
+    dados.valor = (uint16_t) analogRead(A0)/730;
   } else if (topico. equals("umidade")) {
     dados.valor = (uint16_t) dht.readHumidity();
   } else if (topico. equals("temperatura")) {
@@ -117,10 +117,13 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
   Serial.print(dados.topico);
   Serial.print(" Valor Recebido: ");
   Serial.println(dados.valor);
-  if (String(dados.topico).equals("motor")) {
+  String topico = String(dados.topico);
+  if (topico.equals("motor")) {
     digitalWrite(MOTOR, dados.valor);
-    delay(1000);
-    digitalWrite(MOTOR, LOW);
+    digitalWrite(LED_BUILTIN, !dados.valor);
+    //delay(1000);
+    //digitalWrite(MOTOR, LOW);
+    //digitalWrite(LED_BUILTIN, HIGH);
   }
 }
 
@@ -136,6 +139,9 @@ void setup() {
   esp_now_register_send_cb(Enviou);
   esp_now_register_recv_cb(Recebeu);
 
+  pinMode(MOTOR, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(MOTOR, LOW);
 }
 
@@ -149,6 +155,10 @@ void loop() {
     Envia("heat_index");
     delay(2);
     Envia("solo");
+  }
+  if(analogRead(A0) > 480){//Desligamento para não enxarcar
+    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(MOTOR, LOW);
   }
 }
 

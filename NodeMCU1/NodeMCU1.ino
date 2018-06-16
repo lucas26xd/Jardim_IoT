@@ -20,7 +20,7 @@ uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x20, 0x6E}; //Ângela
 #define CHANNEL 3
 
 //Variáveis acumuladoras para enviar ao ThingSpeak
-int umidade = 0, temperatura = 0, indCalor = 0;
+int umidade = 0, temperatura = 0, indCalor = 0, reEnvioMsg = 0;
 int qtdEnviosUmidade = 0, qtdEnviosTemperatura = 0, qtdEnviosIndCalor = 0;
 uint32_t lastEnvio = 0;
 
@@ -29,8 +29,8 @@ uint32_t lastEnvio = 0;
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
-#define SSID "Jesus"
-#define PSWD "40028922"
+#define SSID "LUCAS"
+#define PSWD "889161639397"
 
 String API_KEY_TS = "XXCA1UN2OS46BDVI";
 const char* SERVER_TS = "api.thingspeak.com";
@@ -94,6 +94,13 @@ void Enviou(uint8_t* mac, uint8_t status) { //Callback que verifica se foi receb
   Serial.print(MACescravo);
   Serial.print(" Recepcao: ");
   Serial.println((status == 0 ? "OK" : "ERRO"));
+  if(status == 0){
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+  }else{
+    delay(2);
+    Envia(reEnvioMsg);//Renvia mensagem caso não recebeu
+  }
 }
 
 void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado sempre que recebe um novo pacote
@@ -202,6 +209,7 @@ void IniciaMQTT() {
 }
 
 void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
+  digitalWrite(LED_BUILTIN, LOW);
   Serial.print("Mensagem recebida no topico: ");
   Serial.print(topic);
   Serial.print(" Mensagem:");
@@ -217,13 +225,16 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   String topico = String(topic);
 
   if (topico.equals("motor")) { //Envia para o nodeMCU 2 a mensagem de ligar ou desligar o motor
+    reEnvioMsg = msg.toInt();
     Envia(msg.toInt());
   }
+  Serial.println("-----------------------------");
 }
 
 //Método de envio dos dados para o ThingSpeak
 void EnviaThingSpeak(int t, int h, int hic) {
-  if (ESPClient.connect(SERVER_TS, 80)) {
+  WiFiClient Client;
+  if (Client.connect(SERVER_TS, 80)) {
     String postStr = API_KEY_TS;
     postStr += "&field1=";
     postStr += String(t);
@@ -233,15 +244,15 @@ void EnviaThingSpeak(int t, int h, int hic) {
     postStr += String(hic);
     postStr += "\r\n\r\n";
 
-    ESPClient.print("POST /update HTTP/1.1\n");
-    ESPClient.print("Host: " + String(SERVER_TS) + "\n");
-    ESPClient.print("Connection: close\n");
-    ESPClient.print("X-THINGSPEAKAPIKEY: " + API_KEY_TS + "\n");
-    ESPClient.print("Content-Type: application/x-www-form-urlencoded\n");
-    ESPClient.print("Content-Length: ");
-    ESPClient.print(postStr.length());
-    ESPClient.print("\n\n");
-    ESPClient.print(postStr);
+    Client.print("POST /update HTTP/1.1\n");
+    Client.print("Host: " + String(SERVER_TS) + "\n");
+    Client.print("Connection: close\n");
+    Client.print("X-THINGSPEAKAPIKEY: " + API_KEY_TS + "\n");
+    Client.print("Content-Type: application/x-www-form-urlencoded\n");
+    Client.print("Content-Length: ");
+    Client.print(postStr.length());
+    Client.print("\n\n");
+    Client.print(postStr);
 
     Serial.print("Temperatura média: ");
     Serial.print(t);
@@ -251,7 +262,7 @@ void EnviaThingSpeak(int t, int h, int hic) {
     Serial.print(hic);
     Serial.println(" *C. Enviado ao Thingspeak.");
   }
-  //ESPClient.stop();
+  Client.stop();
 
   Serial.println("Aguardando...");
 }
@@ -275,6 +286,8 @@ void setup() {
   //Callbacks de envio e recebimento do ESP NOW
   esp_now_register_send_cb(Enviou);
   esp_now_register_recv_cb(Recebeu);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop() {
@@ -284,6 +297,7 @@ void loop() {
     if(qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0){
       EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor);
       umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = 0;
+      Serial.println("Enviou");
     }
   }
 }
