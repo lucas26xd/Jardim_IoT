@@ -251,7 +251,7 @@ void EnviaThingSpeak(int t, int h, int hic) {
     Serial.print(hic);
     Serial.println(" *C. Enviado ao Thingspeak.");
   }
-  ESPClient.stop();
+  //ESPClient.stop();
 
   Serial.println("Aguardando...");
 }
@@ -281,9 +281,9 @@ void loop() {
   MQTT.loop();
   if ((millis() - lastEnvio) >= 20000) { //Não pode usar delay
     lastEnvio = millis();
-    if(qtdEnvios > 0){
-      EnviaThingSpeak(temperatura / qtdEnvios, umidade / qtdEnvios, indCalor / qtdEnvios);
-      umidade = temperatura = indCalor = qtdEnvios = 0;
+    if(qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0){
+      EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor);
+      umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = 0;
     }
   }
 }
