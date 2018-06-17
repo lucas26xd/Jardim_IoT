@@ -46,7 +46,7 @@ void IniciaESPNow() { //Inicia ESP Now
   Serial.print("STA MAC: ");
   Serial.println(WiFi.macAddress());
 
-  esp_now_set_self_role(3); //Iniciando no modo MASTER+SLAVE
+  esp_now_set_self_role(ROLE); //Iniciando no modo MASTER+SLAVE
 
   uint8_t KEY[0] = {};
   //uint8_t key[16] = {0,255,1,1,1,1,1,1,1,1,1,1,1,1,1,1};

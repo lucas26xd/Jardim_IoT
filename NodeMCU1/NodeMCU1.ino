@@ -29,7 +29,7 @@ int reEnvioMsg = 0;
 
 //Variáveis para notificação
 int U = 0, T = 0, U_S = 0;
-int limiarUmidade[2] = {20, 90}, //Limite inferior e superior
+int limiarUmidade[2] = {20, 80}, //Limite inferior e superior
     limiarTemperatura[2] = {15, 50},
     limiarUmidadeSolo[2] = {25, 90};
 uint32_t lastNotificacao = 0;
@@ -70,7 +70,7 @@ void IniciaESPNow() { //Inicia ESP Now
   Serial.print("STA MAC: ");
   Serial.println(WiFi.macAddress());
 
-  esp_now_set_self_role(3); //Iniciando no modo MASTER+SLAVE
+  esp_now_set_self_role(ROLE); //Iniciando no modo MASTER+SLAVE
 
   uint8_t KEY[0] = {};
   //uint8_t key[16] = {0,255,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
@@ -220,7 +220,13 @@ void IniciaMQTT() {
   //Primeiro publish e se inscrevendo nos tópicos que seram usados
   MQTT.publish("Iniciou", "OK");
   MQTT.subscribe("motor");
-
+  MQTT.subscribe("configTemp");
+  MQTT.subscribe("configUmid");
+  MQTT.subscribe("configSolo");
+  //Setando os valores padrões de limiar
+  MQTT.publish("configTemp", "[20, 80]");
+  MQTT.publish("configUmid", "[15, 50]");
+  MQTT.publish("configSolo", "[25, 90]");
 }
 
 void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
@@ -243,8 +249,25 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
     reEnvioMsg = msg.toInt();
     Envia(msg.toInt());
     delay(2);
+  } else if (topico.equals("configTemp")) {
+    atualizaLimiares(msg, limiarTemperatura);
+  } else if (topico.equals("configUmid")) {
+    atualizaLimiares(msg, limiarUmidade);
+  } else if (topico.equals("configSolo")) {
+    atualizaLimiares(msg, limiarUmidadeSolo);
   }
   Serial.println("-----------------------------");
+}
+
+void atualizaLimiares(String msg, int* vet){
+  if(msg.indexOf("[") != -1 && msg.indexOf("]") != -1 && msg.indexOf(", ") != -1){ //Procurapor uma estrutura padrão
+      String n = msg.substring(msg.indexOf("["), msg.indexOf(","));
+      if(n.toInt() != 0)//se não deu erro na conversão
+        vet[0] = n.toInt();
+      n = msg.substring(msg.indexOf(", ")+1, msg.indexOf("]"));
+      if(n.toInt() != 0)
+        vet[1] = n.toInt();
+  }
 }
 
 //Método de envio dos dados para o ThingSpeak
