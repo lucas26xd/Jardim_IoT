@@ -79,6 +79,8 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
         return;
     }
     dados.valor = (uint16_t) dht.computeHeatIndex(t, h, false);
+  } else if(topico. equals("motor")){//Mandar desligar o motor no topico do MQTT
+    dados.valor = 0;
   } else {
     Serial.println("Nada a fazer!");
     dados.valor = 0;
@@ -133,6 +135,7 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
 void desligaMotor(){
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(MOTOR, LOW);
+  Envia("motor");
 }
 
 void setup() {
@@ -156,13 +159,13 @@ void setup() {
 void loop() {
   if (millis() - lastEnvio >= 5000) { //Envia para o nodeMCU 1 os dados a cada 1 segundo
     lastEnvio = millis();
+    Envia("solo");
+    delay(2);
     Envia("temperatura");
     delay(2);
     Envia("umidade");
     delay(2);
     Envia("heat_index");
-    delay(2);
-    Envia("solo");
     delay(2);
   }
   if(analogRead(A0) > 480){//Desligamento para não enxarcar

@@ -20,9 +20,19 @@ uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x20, 0x6E}; //Ângela
 #define CHANNEL 3
 
 //Variáveis acumuladoras para enviar ao ThingSpeak
-int umidade = 0, temperatura = 0, indCalor = 0, reEnvioMsg = 0;
+int umidade = 0, temperatura = 0, indCalor = 0;
 int qtdEnviosUmidade = 0, qtdEnviosTemperatura = 0, qtdEnviosIndCalor = 0;
 uint32_t lastEnvio = 0;
+
+//Variável que permite o reenvio do comando ao motor, caso dê problema no envio
+int reEnvioMsg = 0;
+
+//Variáveis para notificação
+int U = 0, T = 0, U_S = 0;
+int limiarUmidade[2] = {20, 90}, //Limite inferior e superior
+    limiarTemperatura[2] = {15, 50},
+    limiarUmidadeSolo[2] = {25, 90};
+uint32_t lastNotificacao = 0;
 
 //Definições serviços em nuvem
 #include <ESP8266WiFi.h>
@@ -95,10 +105,10 @@ void Enviou(uint8_t* mac, uint8_t status) { //Callback que verifica se foi receb
   Serial.print(MACescravo);
   Serial.print(" Recepcao: ");
   Serial.println((status == 0 ? "OK" : "ERRO"));
-  if(status == 0){
-    delay(500);
+  if (status == 0) {
+    delay(200);
     digitalWrite(LED_BUILTIN, HIGH);
-  }else{
+  } else {
     delay(2);
     Envia(reEnvioMsg);//Renvia mensagem caso não recebeu
   }
@@ -107,8 +117,8 @@ void Enviou(uint8_t* mac, uint8_t status) { //Callback que verifica se foi receb
 void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado sempre que recebe um novo pacote
   char MACmestre[6];
   sprintf(MACmestre, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  Serial.print("Recepcao do ESP de MAC: ");
-  Serial.println(MACmestre);
+  //Serial.print("Recepcao do ESP de MAC: ");
+  //Serial.println(MACmestre);
 
   DADOS dados;
   memcpy(&dados, data, sizeof(dados));
@@ -126,13 +136,17 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
   //Acumula os valores recebidos, para mandar a média ao ThingSpeak
   if (String(dados.topico).equals("umidade")) {
     umidade += dados.valor;
+    U = dados.valor;
     qtdEnviosUmidade++;
   } else if (String(dados.topico).equals("temperatura")) {
     temperatura += dados.valor;
+    T = dados.valor;
     qtdEnviosTemperatura++;
   } else if (String(dados.topico).equals("heat_index")) {
     indCalor += dados.valor;
     qtdEnviosIndCalor++;
+  } else if (String(dados.topico).equals("solo")) {
+    U_S = dados.valor;
   }
 }
 
@@ -269,6 +283,14 @@ void EnviaThingSpeak(int t, int h, int hic) {
   Serial.println("Aguardando...");
 }
 
+boolean dentroIntervalo(int* vet, int val) {
+  if (vet[0] < val && val < vet[1]) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -290,15 +312,33 @@ void setup() {
   esp_now_register_recv_cb(Recebeu);
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
+  Notificar("Iniciou", "OK");
 }
 
 void loop() {
   MQTT.loop();
   if ((millis() - lastEnvio) >= 20000) { //Não pode usar delay
     lastEnvio = millis();
-    if(qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0){
+    if (qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0) {
       EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor);
       umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = 0;
+    }
+  }
+  if(T > 0 && U > 0 && U_S > 0){
+    if((millis() - lastNotificacao) >= 10000){//Garantir que ele não enviará muitas notificações
+      lastNotificacao = millis();
+      if (!dentroIntervalo(limiarTemperatura, T)){
+        Notificar("Temperatura!", "A Temperatra está fora dos limiares! Com valor: "+String(T)+" *C.");
+        T = 0;
+      }
+      if (!dentroIntervalo(limiarUmidade, U)){
+        Notificar("Umidade do Ar!", "A Umidade do ar está fora dos limiares! Com valor: "+String(U)+" %.");
+        U = 0;
+      }
+      if (!dentroIntervalo(limiarUmidadeSolo, U_S)){
+        Notificar("Umidade do Solo!", "A Umidade do solo está fora dos limiares! Com valor: "+String(U_S)+" %.");
+        U_S = 0;
+      }
     }
   }
 }
