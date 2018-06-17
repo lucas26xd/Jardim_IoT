@@ -17,7 +17,7 @@ struct DADOS {
 
 uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x22, 0x1D}; //Lucas
 
-#define ROLE 2
+#define ROLE 3
 #define CHANNEL 3
 
 //Definições Sensores/Atuadores
@@ -29,6 +29,7 @@ DHT dht(D[3], DHT11);
 
 #define SOLO A0
 #define MOTOR D[2]
+boolean motorOn = false;
 
 uint32_t lastEnvio = 0;
 
@@ -135,7 +136,7 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
 void desligaMotor(){
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(MOTOR, LOW);
-  Envia("motor");
+  //Envia("motor");
 }
 
 void setup() {
@@ -168,8 +169,11 @@ void loop() {
     Envia("heat_index");
     delay(2);
   }
-  if(analogRead(A0) > 480){//Desligamento para não enxarcar
+  if(analogRead(A0) > 480 && motorOn){//Desligamento para não enxarcar
     desligaMotor();
+    motorOn = false;
+  } else {
+    motorOn = true;
   }
 }
 

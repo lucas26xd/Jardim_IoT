@@ -16,8 +16,8 @@ struct DADOS {
 
 uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x20, 0x6E}; //Ângela
 
-#define ROLE 2
-#define CHANNEL 3
+#define ROLE 3
+#define CHANNEL 4
 
 //Variáveis acumuladoras para enviar ao ThingSpeak
 int umidade = 0, temperatura = 0, indCalor = 0;
