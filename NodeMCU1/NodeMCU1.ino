@@ -20,8 +20,8 @@ uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x20, 0x6E}; //Ângela
 #define CHANNEL 4
 
 //Variáveis acumuladoras para enviar ao ThingSpeak
-int umidade = 0, temperatura = 0, indCalor = 0;
-int qtdEnviosUmidade = 0, qtdEnviosTemperatura = 0, qtdEnviosIndCalor = 0;
+int umidade = 0, temperatura = 0, indCalor = 0, solo = 0;
+int qtdEnviosUmidade = 0, qtdEnviosTemperatura = 0, qtdEnviosIndCalor = 0, qtdEnviosSolo = 0;
 uint32_t lastEnvio = 0;
 
 //Variável que permite o reenvio do comando ao motor, caso dê problema no envio
@@ -147,6 +147,8 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
     qtdEnviosIndCalor++;
   } else if (String(dados.topico).equals("solo")) {
     U_S = dados.valor;
+    solo += dados.valor;
+    qtdEnviosSolo++;
   }
 }
 
@@ -271,7 +273,7 @@ void atualizaLimiares(String msg, int* vet){
 }
 
 //Método de envio dos dados para o ThingSpeak
-void EnviaThingSpeak(int t, int h, int hic) {
+void EnviaThingSpeak(int t, int h, int hic, int solo) {
   WiFiClient Client;
   if (Client.connect(SERVER_TS, 80)) {
     String postStr = API_KEY_TS;
@@ -281,6 +283,8 @@ void EnviaThingSpeak(int t, int h, int hic) {
     postStr += String(h);
     postStr += "&field3=";
     postStr += String(hic);
+    postStr += "&field4=";
+    postStr += String(solo);
     postStr += "\r\n\r\n";
 
     Client.print("POST /update HTTP/1.1\n");
@@ -342,9 +346,9 @@ void loop() {
   MQTT.loop();
   if ((millis() - lastEnvio) >= 20000) { //Não pode usar delay
     lastEnvio = millis();
-    if (qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0) {
-      EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor);
-      umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = 0;
+    if (qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0 && qtdEnviosSolo > 0) {
+      EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor, solo / qtdEnviosSolo);
+      umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = qtdEnviosSolo = 0;
     }
   }
   if(T > 0 && U > 0 && U_S > 0){
