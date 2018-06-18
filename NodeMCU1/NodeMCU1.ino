@@ -273,7 +273,7 @@ void atualizaLimiares(String msg, int* vet){
 }
 
 //Método de envio dos dados para o ThingSpeak
-void EnviaThingSpeak(int t, int h, int hic, int solo) {
+void EnviaThingSpeak(int t, int h, int hic, int s) {
   WiFiClient Client;
   if (Client.connect(SERVER_TS, 80)) {
     String postStr = API_KEY_TS;
@@ -284,7 +284,7 @@ void EnviaThingSpeak(int t, int h, int hic, int solo) {
     postStr += "&field3=";
     postStr += String(hic);
     postStr += "&field4=";
-    postStr += String(solo);
+    postStr += String(s);
     postStr += "\r\n\r\n";
 
     Client.print("POST /update HTTP/1.1\n");
@@ -301,6 +301,8 @@ void EnviaThingSpeak(int t, int h, int hic, int solo) {
     Serial.print(t);
     Serial.print(" *C, Umidade média: ");
     Serial.print(h);
+    Serial.print(" %, Solo: ");
+    Serial.print(s);
     Serial.print(" %, Indice de Calor: ");
     Serial.print(hic);
     Serial.println(" *C. Enviado ao Thingspeak.");
@@ -348,7 +350,7 @@ void loop() {
     lastEnvio = millis();
     if (qtdEnviosTemperatura > 0 && qtdEnviosUmidade > 0 && qtdEnviosIndCalor > 0 && qtdEnviosSolo > 0) {
       EnviaThingSpeak(temperatura / qtdEnviosTemperatura, umidade / qtdEnviosUmidade, indCalor / qtdEnviosIndCalor, solo / qtdEnviosSolo);
-      umidade = temperatura = indCalor = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = qtdEnviosSolo = 0;
+      umidade = temperatura = indCalor = solo = qtdEnviosIndCalor = qtdEnviosTemperatura = qtdEnviosUmidade = qtdEnviosSolo = 0;
     }
   }
   if(T > 0 && U > 0 && U_S > 0){
