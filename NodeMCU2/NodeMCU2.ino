@@ -18,7 +18,7 @@ struct DADOS {
 uint8_t MACslave[6] = {0xDC, 0x4F, 0x22, 0x18, 0x22, 0x1D}; //Lucas
 
 #define ROLE 3
-#define CHANNEL 3
+#define CHANNEL 4
 
 //Definições Sensores/Atuadores
 #include<DHT.h>
@@ -32,6 +32,8 @@ DHT dht(D[3], DHT11);
 boolean motorOn = false;
 
 uint32_t lastEnvio = 0;
+const String vetor[] = {"solo", "temperatura", "umidade", "heat_index"};
+int i = 0;
 
 //Métodos uteis para o protocolo ESP Now
 void IniciaESPNow() { //Inicia ESP Now
@@ -59,20 +61,20 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
   DADOS dados;
   topico.toCharArray(dados.topico, sizeof(dados.topico));
   if (topico.equals("solo")) {
-    dados.valor = (uint16_t) analogRead(A0)*100/750;
-  } else if (topico. equals("umidade")) {
+    dados.valor = (uint16_t) analogRead(SOLO)*100/750;
+  } else if (topico.equals("umidade")) {
     if (isnan(dht.readHumidity())) {
       Serial.println("Falha na leitura da umidade do sensor!");
       return;
     }
     dados.valor = (uint16_t) dht.readHumidity();
-  } else if (topico. equals("temperatura")) {
+  } else if (topico.equals("temperatura")) {
     if (isnan(dht.readTemperature())) {
       Serial.println("Falha na leitura da temperatura do sensor!");
       return;
     }
     dados.valor = (uint16_t) dht.readTemperature();
-  } else if (topico. equals("heat_index")) {
+  } else if (topico.equals("heat_index")) {
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t)) {
@@ -80,7 +82,7 @@ void Envia(String topico) { //Envia uma estrutura de dados ao escravo pareado co
         return;
     }
     dados.valor = (uint16_t) dht.computeHeatIndex(t, h, false);
-  } else if(topico. equals("motor")){//Mandar desligar o motor no topico do MQTT
+  } else if(topico.equals("motor")){//Mandar desligar o motor no topico do MQTT
     dados.valor = 0;
   } else {
     Serial.println("Nada a fazer!");
@@ -117,12 +119,13 @@ void Recebeu(uint8_t *mac, uint8_t *data, uint8_t len) { //Callback chamado semp
   Serial.println(MACmestre);
 
   DADOS dados;
-  memcpy(&dados, data, sizeof(dados));
+  memcpy(&dados, data, sizeof(data));
 
   Serial.print("Topico Recebido: ");
   Serial.print(dados.topico);
   Serial.print(" Valor Recebido: ");
   Serial.println(dados.valor);
+  
   String topico = String(dados.topico);
   if (topico.equals("motor")) {
     digitalWrite(MOTOR, dados.valor);
@@ -153,23 +156,19 @@ void setup() {
 
   pinMode(MOTOR, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(MOTOR, LOW);
+  desligaMotor();
 }
 
 void loop() {
-  if (millis() - lastEnvio >= 5000) { //Envia para o nodeMCU 1 os dados a cada 1 segundo
+  if (millis() - lastEnvio >= 1000) { //Envia para o nodeMCU 1 os dados a cada 1 segundo
     lastEnvio = millis();
-    Envia("solo");
-    delay(2);
-    Envia("temperatura");
-    delay(2);
-    Envia("umidade");
-    delay(2);
-    Envia("heat_index");
+    Envia(vetor[i]);
+    i++;
+    if(i > 3)
+      i = 0;
     delay(2);
   }
-  if(analogRead(A0) > 480 && motorOn){//Desligamento para não enxarcar
+  if(analogRead(SOLO) > 480 && motorOn){//Desligamento para não enxarcar
     desligaMotor();
     motorOn = false;
   } else {

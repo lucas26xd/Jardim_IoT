@@ -39,15 +39,15 @@ uint32_t lastNotificacao = 0;
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
-#define SSID "LUCAS"
-#define PSWD "889161639397"
+#define SSID "Jesus"
+#define PSWD "40028922"
 
 String API_KEY_TS = "XXCA1UN2OS46BDVI";
 const char* SERVER_TS = "api.thingspeak.com";
 
 const char* SERVER_PB = "api.pushbullet.com";
 const int PORT_PB = 443;
-const char* API_KEY_PB = "o.RVnAlibsp0K9ikkqjY9GfBEOEHpMvBbL";
+const char* API_KEY_PB = "o.64myvxpjRiNA7jMqmQUgtJwTA1XommwK";//"o.RVnAlibsp0K9ikkqjY9GfBEOEHpMvBbL";
 
 const char* SERVER_MQTT = "m12.cloudmqtt.com";
 const int PORT_MQTT = 18459;
@@ -110,7 +110,7 @@ void Enviou(uint8_t* mac, uint8_t status) { //Callback que verifica se foi receb
     digitalWrite(LED_BUILTIN, HIGH);
   } else {
     delay(2);
-    Envia(reEnvioMsg);//Renvia mensagem caso não recebeu
+    Envia(reEnvioMsg);//Reenvia mensagem caso não recebeu
   }
 }
 
@@ -226,13 +226,12 @@ void IniciaMQTT() {
   MQTT.subscribe("configUmid");
   MQTT.subscribe("configSolo");
   //Setando os valores padrões de limiar
-  MQTT.publish("configTemp", "[20, 80]");
-  MQTT.publish("configUmid", "[15, 50]");
+  MQTT.publish("configTemp", "[15, 50]");
+  MQTT.publish("configUmid", "[20, 80]");
   MQTT.publish("configSolo", "[25, 90]");
 }
 
 void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
-  digitalWrite(LED_BUILTIN, LOW);
   Serial.print("Mensagem recebida no topico: ");
   Serial.print(topic);
   Serial.print(" Mensagem:");
@@ -248,6 +247,7 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   String topico = String(topic);
 
   if (topico.equals("motor")) { //Envia para o nodeMCU 2 a mensagem de ligar ou desligar o motor
+    digitalWrite(LED_BUILTIN, LOW);
     reEnvioMsg = msg.toInt();
     Envia(msg.toInt());
     delay(2);
@@ -261,14 +261,10 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   Serial.println("-----------------------------");
 }
 
-void atualizaLimiares(String msg, int* vet){
+void atualizaLimiares(String msg, int *vet){
   if(msg.indexOf("[") != -1 && msg.indexOf("]") != -1 && msg.indexOf(", ") != -1){ //Procurapor uma estrutura padrão
-      String n = msg.substring(msg.indexOf("["), msg.indexOf(","));
-      if(n.toInt() != 0)//se não deu erro na conversão
-        vet[0] = n.toInt();
-      n = msg.substring(msg.indexOf(", ")+1, msg.indexOf("]"));
-      if(n.toInt() != 0)
-        vet[1] = n.toInt();
+      vet[0] = msg.substring(msg.indexOf("[")+1, msg.indexOf(",")).toInt();
+      vet[1] = msg.substring(msg.indexOf(", ")+1, msg.indexOf("]")).toInt();
   }
 }
 
@@ -313,11 +309,10 @@ void EnviaThingSpeak(int t, int h, int hic, int s) {
 }
 
 boolean dentroIntervalo(int* vet, int val) {
-  if (vet[0] < val && val < vet[1]) {
+  if (vet[0] < val && val < vet[1])
     return true;
-  } else {
+  else
     return false;
-  }
 }
 
 void setup() {
@@ -339,8 +334,10 @@ void setup() {
   //Callbacks de envio e recebimento do ESP NOW
   esp_now_register_send_cb(Enviou);
   esp_now_register_recv_cb(Recebeu);
+  
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
+  
   Notificar("Iniciou", "OK");
 }
 
@@ -354,7 +351,7 @@ void loop() {
     }
   }
   if(T > 0 && U > 0 && U_S > 0){
-    if((millis() - lastNotificacao) >= 10000){//Garantir que ele não enviará muitas notificações
+    if((millis() - lastNotificacao) >= 20000){//Garantir que ele não enviará muitas notificações
       lastNotificacao = millis();
       if (!dentroIntervalo(limiarTemperatura, T)){
         Notificar("Temperatura!", "A Temperatra está fora dos limiares! Com valor: "+String(T)+" *C.");
